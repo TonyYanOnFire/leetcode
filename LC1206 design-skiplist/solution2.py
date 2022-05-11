@@ -15,6 +15,8 @@ class Skiplist:
     P = 0.5
     # 跳表的最高层数, 方向上, 最底层为实际链表
     MAX_LEVEL = 16
+    LEFT_END = -1
+    RIGHT_END = 20001
 
     def __init__(self):
         # 初始化仅存一层
@@ -43,6 +45,12 @@ class Skiplist:
         while curr:
             if curr.right.val == num:
                 curr.right = curr.right.right
+                # 若删除节点后导致当前层为空, 则删除当前层
+                if (curr.val == self.LEFT_END and 
+                    curr.right.val == self.RIGHT_END and 
+                    self.curr_level > 1):
+                    self.head, self.tail = self.head.down, self.tail.down
+                    self.curr_level -= 1
                 curr = curr.down
                 found = True
             elif curr.right.val < num:
@@ -54,21 +62,22 @@ class Skiplist:
 
     def add(self, num: int) -> None:
         indexes_level = self._gen_indexes_level()
+        # 需要的层数不够, 补层数
         for i in range(indexes_level - self.curr_level):
-            self._add_level
+            self._add_level()
 
         margin_nodes = []
         curr = self.head
         # 从首层开始向右向下走
         while curr:
             if curr.right.val < num:
-                # 右节点还是比num小, 说明没到头, 继续往右走
+                # 右节点还是比num小, 说明当前层没到头, 继续往右走
                 curr = curr.right
             else:
-                # 右节点大于等于num, 说明在当前节点和右节点间之间插入, 记录并下探
+                # 右节点大于等于num, 说明在当前节点和右节点间之间插入, 记当前节点为margin_node并下探
                 margin_nodes.append(curr)
                 curr = curr.down
-        
+
         pre_node = None
         # 从最底层的margin_node开始, 构建随机层num的节点
         for i in range(self.curr_level - 1, self.curr_level - 1 - indexes_level, -1):
@@ -81,15 +90,15 @@ class Skiplist:
             pre_node = node
 
     
-    # 需要构建的索引数. 最少是1, 即至少要加入到底层的实际链表
+    # 需要构建的索引数. 最少是1, 即至少要加入到底层的实际链表, 至多较当前层数多维护1层
     def _gen_indexes_level(self) -> int:
         k = 1
-        while random.random() < self.P and k < self.MAX_LEVEL:
+        while random.random() < self.P and k <= self.curr_level and k < self.MAX_LEVEL:
             k += 1
         return k
 
     def _add_level(self) -> None:
-        head, tail = Node(-1), Node(20001)
+        head, tail = Node(self.LEFT_END), Node(self.RIGHT_END)
         head.right = tail
         head.down, tail.down = self.head, self.tail
         self.head, self.tail = head, tail
